@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "10K",
+    "slug": "10k-walking",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "tenkwalk",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#22C55E"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.tenkwalk.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "10K uses your location to show walks from where you are."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#22C55E"
+      },
+      "package": "com.tenkwalk.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "10K uses your location to find walks near you."
+        }
+      ],
+      "expo-asset"
+    ]
+  }
+}
