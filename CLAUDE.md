@@ -1,52 +1,44 @@
-# 10K — Walking Navigation App
+# CLAUDE.md
 
-## What this is
-A frictionless pedestrian navigation app (React Native + Expo). Opens to a map instantly, no login required. Helps users find walking routes optimized for speed, shade, or scenery.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Stack
-- React Native 0.81 + Expo SDK 54 + TypeScript
-- Expo Router (file-based routing, single screen: `app/index.tsx`)
-- `react-native-maps` for the map
-- `expo-location` for GPS
-- Nominatim (OpenStreetMap) for place search/geocoding — no API key needed
-- OSRM public API for walking routing — no API key needed
+## Commands
 
-## Current state (MVP working)
-- Map opens centered on user GPS location
-- Search bar with live autocomplete dropdown (Nominatim)
-- Selecting a destination fetches a real walking route via OSRM
-- 3 routes shown: Fastest (real OSRM), Shade (offset +0.003° lat), Scenic (offset -0.003° lat)
-- Route cards show time, distance, shade score, scenic score
-- Report FAB drops an emoji pin at user's current location (stored in local state only)
-- No backend/database yet — all state is in-memory
-
-## Key files
-- `app/index.tsx` — main screen, all state lives here
-- `src/services/routing.ts` — OSRM fetch + shade/scenic offset logic
-- `src/services/geocoding.ts` — Nominatim place search
-- `src/components/SearchBar.tsx` — search input with debounced autocomplete
-- `src/components/RouteResultsOverlay.tsx` — animated bottom sheet
-- `src/components/RouteCard.tsx` — individual route card with score bars
-- `src/components/ReportModal.tsx` — report type picker, emits Report with GPS coords
-- `src/constants/types.ts` — all TypeScript types
-- `src/constants/colors.ts` — color palette + route colors
-- `src/hooks/useLocation.ts` — GPS permission + location hook
-
-## What's NOT built yet (next priorities)
-1. Per-segment shade coloring on polylines (needs RouteSegment model)
-2. Scenic markers/POI icons on map
-3. Shade score based on real logic (time of day, street orientation)
-4. Backend / database for persisting reports
-5. Social/user features (deliberately deferred)
-
-## Running the app
 ```bash
-npx expo start
+npx expo start          # Start Metro bundler + dev server
+npx expo start --tunnel # Use Expo tunnel (for restricted networks)
+npx expo install <pkg>  # Install Expo-compatible package version
 ```
-Scan QR with Expo Go on iPhone (same Wi-Fi). Use `--tunnel` if on restricted network.
 
-## Design principles
-- No signup, no onboarding
-- Open app → see map immediately
-- 3 route buttons only (no sliders)
-- Mock data is fine for now — structure code to swap in real APIs later
+There is no test runner or linter configured yet.
+
+## Architecture
+
+Single-screen Expo Router app. All navigation state lives in `app/index.tsx` — there are no other routes.
+
+**Data flow:**
+1. `useLocation` hook acquires GPS coords on mount
+2. User types in `SearchBar` → debounced call to `geocoding.ts` (Nominatim) → dropdown of `SearchResult[]`
+3. User selects a result → `fetchRoutes()` in `routing.ts` calls OSRM for the real walking polyline, then derives two mock variants by offsetting intermediate coordinates ±0.003° latitude
+4. Routes are rendered as `<Polyline>` on the map; route cards shown in the bottom-sheet overlay
+5. Report taps create a `Report` object at the user's current GPS coord and render as emoji `<Marker>` — stored in local state only (no backend)
+
+**External APIs (no keys required):**
+- Nominatim `https://nominatim.openstreetmap.org/search` — place autocomplete
+- OSRM `https://router.project-osrm.org/route/v1/walking` — walking directions, returns GeoJSON (lon/lat order — convert to {latitude, longitude} on ingest)
+
+**Mock route strategy:** Shade route = all intermediate polyline points shifted +0.003° lat (~300m north); Scenic = −0.003°. Endpoints are always pinned to real origin/destination. Scores (shadeScore, scenicScore 0–10) are hardcoded constants — structured to be replaced with real scoring later.
+
+## Key constraints
+
+- `react-native-maps` requires a real device or emulator — it does not render in Expo web.
+- OSRM GeoJSON coordinates are `[longitude, latitude]` — must be flipped to `{ latitude, longitude }` for react-native-maps.
+- Shade/scenic `estimatedMinutes` is calculated from polyline distance (Haversine) at 5 km/h; fastest uses OSRM's actual `duration` field.
+- TypeScript strict mode is on (`tsconfig.json` extends `expo/tsconfig.base` with `"strict": true`).
+
+## What's not built yet
+
+- Per-segment shade coloring (needs `RouteSegment` model with per-point `shadeScore`)
+- Scenic POI markers on the map
+- Shade scoring from real signals (time of day, street orientation, tree cover)
+- Any backend — reports are lost on app restart
