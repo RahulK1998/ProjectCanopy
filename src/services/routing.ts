@@ -44,7 +44,8 @@ export async function fetchRoutes(origin: Coordinate, destination: Coordinate): 
   const osrm = data.routes[0];
   const fastestCoords = geojsonToCoords(osrm.geometry.coordinates);
   const fastestKm = osrm.distance / 1000;
-  const fastestMin = Math.round(osrm.duration / 60);
+  // OSRM public server only has a driving profile — calculate walking time at 5 km/h
+  const fastestMin = Math.round((fastestKm / 5) * 60);
 
   // Shade route: shift north ~300m, slightly longer → more shaded side streets
   const shadeCoords = offsetPolyline(fastestCoords, 0.003);

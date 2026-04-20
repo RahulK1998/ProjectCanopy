@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import MapView, { Polyline, Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import SearchBar from '../src/components/SearchBar';
+import SearchBar, { SearchBarHandle } from '../src/components/SearchBar';
 import RouteResultsOverlay from '../src/components/RouteResultsOverlay';
 import ReportModal, { REPORT_MARKER_ICONS } from '../src/components/ReportModal';
 import { fetchRoutes } from '../src/services/routing';
@@ -11,8 +11,8 @@ import { COLORS, ROUTE_COLORS } from '../src/constants/colors';
 import useLocation from '../src/hooks/useLocation';
 
 const DEFAULT_REGION = {
-  latitude: 37.7749,
-  longitude: -122.4194,
+  latitude: 39.9526,
+  longitude: -75.1652,
   latitudeDelta: 0.025,
   longitudeDelta: 0.025,
 };
@@ -20,6 +20,7 @@ const DEFAULT_REGION = {
 export default function MapScreen() {
   const { location } = useLocation();
   const mapRef = useRef<MapView>(null);
+  const searchBarRef = useRef<SearchBarHandle>(null);
   const insets = useSafeAreaInsets();
 
   const [routes, setRoutes] = useState<Route[]>([]);
@@ -96,6 +97,7 @@ export default function MapScreen() {
         showsUserLocation
         showsMyLocationButton={false}
         initialRegion={initialRegion}
+        onPress={() => searchBarRef.current?.dismiss()}
       >
         {routes.map((route) => (
           <Polyline
@@ -128,10 +130,30 @@ export default function MapScreen() {
         ))}
       </MapView>
 
-      {/* Floating search bar */}
-      <View style={[styles.searchWrapper, { top: insets.top + 12 }]}>
-        <SearchBar onSelectResult={handleSelectResult} onClear={handleClear} />
-      </View>
+      {/* Search bar — hidden once routes are shown */}
+      {!showRoutes && !routesLoading && (
+        <View style={[styles.searchWrapper, { top: insets.top + 12 }]}>
+          <SearchBar
+            ref={searchBarRef}
+            userLocation={userLocation}
+            onSelectResult={handleSelectResult}
+            onClear={handleClear}
+          />
+        </View>
+      )}
+
+      {/* Compact destination bar shown while routes are active */}
+      {(showRoutes || routesLoading) && (
+        <View style={[styles.searchWrapper, { top: insets.top + 12 }]}>
+          <View style={styles.destinationBar}>
+            <Text style={styles.destinationBarIcon}>📍</Text>
+            <Text style={styles.destinationBarText} numberOfLines={1}>{destination}</Text>
+            <TouchableOpacity onPress={handleClear} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Text style={styles.destinationBarClear}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       {/* Route loading spinner */}
       {routesLoading && (
@@ -141,15 +163,33 @@ export default function MapScreen() {
         </View>
       )}
 
-      {/* Report FAB — hidden when route overlay is open */}
+      {/* Locate me + Report FABs */}
       {!showRoutes && !routesLoading && (
-        <TouchableOpacity
-          style={[styles.reportFab, { bottom: insets.bottom + 32 }]}
-          onPress={() => setShowReport(true)}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.reportFabText}>⚑  Report</Text>
-        </TouchableOpacity>
+        <View style={[styles.fabStack, { bottom: insets.bottom + 32 }]}>
+          <TouchableOpacity
+            style={styles.locateFab}
+            onPress={() => {
+              if (userLocation) {
+                mapRef.current?.animateToRegion({
+                  ...userLocation,
+                  latitudeDelta: 0.015,
+                  longitudeDelta: 0.015,
+                }, 400);
+              }
+            }}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.locateFabIcon}>◎</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.reportFab}
+            onPress={() => setShowReport(true)}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.reportFabText}>⚑  Report</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {showRoutes && (
@@ -193,8 +233,6 @@ const styles = StyleSheet.create({
   },
   loadingText: { fontSize: 15, color: COLORS.subtext, fontWeight: '500' },
   reportFab: {
-    position: 'absolute',
-    right: 20,
     backgroundColor: COLORS.white,
     paddingHorizontal: 18,
     paddingVertical: 11,
@@ -206,6 +244,43 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   reportFabText: { color: COLORS.text, fontSize: 14, fontWeight: '600' },
+  fabStack: {
+    position: 'absolute',
+    right: 20,
+    alignItems: 'center',
+    gap: 10,
+  },
+  locateFab: {
+    backgroundColor: COLORS.white,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.14,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+  locateFabIcon: { fontSize: 22, color: COLORS.primary },
+  destinationBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
+    gap: 10,
+  },
+  destinationBarIcon: { fontSize: 16 },
+  destinationBarText: { flex: 1, fontSize: 16, fontWeight: '600', color: COLORS.text },
+  destinationBarClear: { fontSize: 14, color: COLORS.subtext },
   reportPin: {
     backgroundColor: COLORS.white,
     borderRadius: 20,

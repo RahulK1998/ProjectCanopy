@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import {
   View,
   TextInput,
@@ -9,99 +9,114 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { COLORS } from '../constants/colors';
-import { SearchResult } from '../constants/types';
+import { Coordinate, SearchResult } from '../constants/types';
 import { searchPlaces } from '../services/geocoding';
 
+export interface SearchBarHandle {
+  dismiss: () => void;
+}
+
 interface Props {
+  userLocation: Coordinate | null;
   onSelectResult: (result: SearchResult) => void;
   onClear: () => void;
 }
 
-export default function SearchBar({ onSelectResult, onClear }: Props) {
-  const [value, setValue] = useState('');
-  const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const inputRef = useRef<TextInput>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+const SearchBar = forwardRef<SearchBarHandle, Props>(
+  ({ userLocation, onSelectResult, onClear }, ref) => {
+    const [value, setValue] = useState('');
+    const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
+    const [loading, setLoading] = useState(false);
+    const inputRef = useRef<TextInput>(null);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (value.length < 3) {
-      setSuggestions([]);
-      return;
-    }
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(async () => {
-      setLoading(true);
-      const results = await searchPlaces(value);
-      setSuggestions(results);
-      setLoading(false);
-    }, 400);
-    return () => {
+    useImperativeHandle(ref, () => ({
+      dismiss: () => {
+        setSuggestions([]);
+        Keyboard.dismiss();
+      },
+    }));
+
+    useEffect(() => {
+      if (value.length < 3) {
+        setSuggestions([]);
+        return;
+      }
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(async () => {
+        setLoading(true);
+        const results = await searchPlaces(value, userLocation ?? undefined);
+        setSuggestions(results);
+        setLoading(false);
+      }, 400);
+      return () => {
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+      };
+    }, [value, userLocation]);
+
+    const handleSelect = (result: SearchResult) => {
+      setValue(result.name.split(',')[0].trim());
+      setSuggestions([]);
+      Keyboard.dismiss();
+      onSelectResult(result);
     };
-  }, [value]);
 
-  const handleSelect = (result: SearchResult) => {
-    const shortName = result.name.split(',')[0].trim();
-    setValue(shortName);
-    setSuggestions([]);
-    Keyboard.dismiss();
-    onSelectResult(result);
-  };
+    const handleClear = () => {
+      setValue('');
+      setSuggestions([]);
+      onClear();
+      inputRef.current?.focus();
+    };
 
-  const handleClear = () => {
-    setValue('');
-    setSuggestions([]);
-    onClear();
-    inputRef.current?.focus();
-  };
-
-  return (
-    <View>
-      <View style={styles.container}>
-        <Text style={styles.icon}>🔍</Text>
-        <TextInput
-          ref={inputRef}
-          style={styles.input}
-          placeholder="Where are you walking to?"
-          placeholderTextColor={COLORS.placeholder}
-          value={value}
-          onChangeText={setValue}
-          returnKeyType="search"
-          autoCorrect={false}
-        />
-        {loading ? (
-          <ActivityIndicator size="small" color={COLORS.subtext} style={styles.indicator} />
-        ) : value.length > 0 ? (
-          <TouchableOpacity
-            onPress={handleClear}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Text style={styles.clear}>✕</Text>
-          </TouchableOpacity>
-        ) : null}
-      </View>
-
-      {suggestions.length > 0 && (
-        <View style={styles.dropdown}>
-          {suggestions.map((item, index) => (
+    return (
+      <View>
+        <View style={styles.container}>
+          <Text style={styles.icon}>🔍</Text>
+          <TextInput
+            ref={inputRef}
+            style={styles.input}
+            placeholder="Where are you walking to?"
+            placeholderTextColor={COLORS.placeholder}
+            value={value}
+            onChangeText={setValue}
+            returnKeyType="search"
+            autoCorrect={false}
+          />
+          {loading ? (
+            <ActivityIndicator size="small" color={COLORS.subtext} style={styles.indicator} />
+          ) : value.length > 0 ? (
             <TouchableOpacity
-              key={index}
-              style={[styles.suggestion, index < suggestions.length - 1 && styles.divider]}
-              onPress={() => handleSelect(item)}
-              activeOpacity={0.7}
+              onPress={handleClear}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             >
-              <Text style={styles.suggestionIcon}>📍</Text>
-              <Text style={styles.suggestionText} numberOfLines={2}>
-                {item.name}
-              </Text>
+              <Text style={styles.clear}>✕</Text>
             </TouchableOpacity>
-          ))}
+          ) : null}
         </View>
-      )}
-    </View>
-  );
-}
+
+        {suggestions.length > 0 && (
+          <View style={styles.dropdown}>
+            {suggestions.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[styles.suggestion, index < suggestions.length - 1 && styles.divider]}
+                onPress={() => handleSelect(item)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.suggestionIcon}>📍</Text>
+                <Text style={styles.suggestionText} numberOfLines={2}>
+                  {item.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  }
+);
+
+export default SearchBar;
 
 const styles = StyleSheet.create({
   container: {
@@ -139,10 +154,7 @@ const styles = StyleSheet.create({
     paddingVertical: 13,
     gap: 10,
   },
-  divider: {
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
+  divider: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
   suggestionIcon: { fontSize: 14 },
   suggestionText: { flex: 1, fontSize: 14, color: COLORS.text, lineHeight: 20 },
 });
