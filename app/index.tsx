@@ -26,6 +26,7 @@ export default function MapScreen() {
   const [routes, setRoutes] = useState<Route[]>([]);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
   const [showRoutes, setShowRoutes] = useState(false);
+  const [overlayCollapsed, setOverlayCollapsed] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [destination, setDestination] = useState('');
   const [routesLoading, setRoutesLoading] = useState(false);
@@ -64,6 +65,7 @@ export default function MapScreen() {
 
   const handleClear = useCallback(() => {
     setShowRoutes(false);
+    setOverlayCollapsed(false);
     setRoutes([]);
     setDestination('');
     setSelectedRouteId(null);
@@ -97,7 +99,10 @@ export default function MapScreen() {
         showsUserLocation
         showsMyLocationButton={false}
         initialRegion={initialRegion}
-        onPress={() => searchBarRef.current?.dismiss()}
+        onPress={() => {
+          searchBarRef.current?.dismiss();
+          if (showRoutes) setOverlayCollapsed(true);
+        }}
       >
         {routes.map((route) => (
           <Polyline
@@ -106,6 +111,11 @@ export default function MapScreen() {
             strokeColor={ROUTE_COLORS[route.type]}
             strokeWidth={selectedRouteId === route.id ? 6 : 3}
             lineDashPattern={selectedRouteId === route.id ? undefined : [8, 5]}
+            tappable
+            onPress={() => {
+              setSelectedRouteId(route.id);
+              setOverlayCollapsed(false);
+            }}
           />
         ))}
 
@@ -198,7 +208,9 @@ export default function MapScreen() {
           selectedRouteId={selectedRouteId}
           onSelectRoute={setSelectedRouteId}
           onClose={handleClear}
+          onExpand={() => setOverlayCollapsed(false)}
           destination={destination}
+          collapsed={overlayCollapsed}
         />
       )}
 

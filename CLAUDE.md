@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Rules
+
+- Never delete any file in this repository without explicitly asking the user for confirmation first.
+
 ## Commands
 
 ```bash
