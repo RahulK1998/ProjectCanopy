@@ -31,10 +31,15 @@ export default function MapScreen() {
   const [destination, setDestination] = useState('');
   const [routesLoading, setRoutesLoading] = useState(false);
   const [reports, setReports] = useState<Report[]>([]);
+  const [originResult, setOriginResult] = useState<SearchResult | null>(null);
+  const [editingOrigin, setEditingOrigin] = useState(false);
+  const originBarRef = useRef<SearchBarHandle>(null);
 
   const handleSelectResult = useCallback(
     async (result: SearchResult) => {
-      const origin = location
+      const origin = originResult
+        ? originResult.coordinate
+        : location
         ? { latitude: location.coords.latitude, longitude: location.coords.longitude }
         : { latitude: DEFAULT_REGION.latitude, longitude: DEFAULT_REGION.longitude };
 
@@ -60,7 +65,7 @@ export default function MapScreen() {
         setRoutesLoading(false);
       }
     },
-    [location]
+    [location, originResult]
   );
 
   const handleClear = useCallback(() => {
@@ -69,6 +74,7 @@ export default function MapScreen() {
     setRoutes([]);
     setDestination('');
     setSelectedRouteId(null);
+    setEditingOrigin(false);
   }, []);
 
   const handleReport = useCallback((report: Report) => {
@@ -140,15 +146,64 @@ export default function MapScreen() {
         ))}
       </MapView>
 
-      {/* Search bar — hidden once routes are shown */}
+      {/* Search panel — hidden once routes are shown */}
       {!showRoutes && !routesLoading && (
         <View style={[styles.searchWrapper, { top: insets.top + 12 }]}>
-          <SearchBar
-            ref={searchBarRef}
-            userLocation={userLocation}
-            onSelectResult={handleSelectResult}
-            onClear={handleClear}
-          />
+          {editingOrigin ? (
+            // Origin search mode
+            <View style={styles.originSearchPanel}>
+              <TouchableOpacity
+                style={styles.originBackRow}
+                onPress={() => setEditingOrigin(false)}
+              >
+                <Text style={styles.originBackIcon}>←</Text>
+                <Text style={styles.originBackText}>Set starting point</Text>
+              </TouchableOpacity>
+              <SearchBar
+                ref={originBarRef}
+                userLocation={userLocation}
+                placeholder="Search starting point…"
+                autoFocus
+                onSelectResult={(result) => {
+                  setOriginResult(result);
+                  setEditingOrigin(false);
+                }}
+                onClear={() => {
+                  setOriginResult(null);
+                  setEditingOrigin(false);
+                }}
+              />
+            </View>
+          ) : (
+            // Normal two-field mode
+            <View style={styles.searchPanel}>
+              <TouchableOpacity
+                style={styles.fromRow}
+                onPress={() => setEditingOrigin(true)}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.fromDot}>●</Text>
+                <Text style={styles.fromText} numberOfLines={1}>
+                  {originResult ? originResult.name.split(',')[0] : 'Your location'}
+                </Text>
+                {originResult && (
+                  <TouchableOpacity
+                    onPress={() => setOriginResult(null)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  >
+                    <Text style={styles.fromClear}>✕</Text>
+                  </TouchableOpacity>
+                )}
+              </TouchableOpacity>
+              <View style={styles.fieldDivider} />
+              <SearchBar
+                ref={searchBarRef}
+                userLocation={userLocation}
+                onSelectResult={handleSelectResult}
+                onClear={handleClear}
+              />
+            </View>
+          )}
         </View>
       )}
 
@@ -293,6 +348,47 @@ const styles = StyleSheet.create({
   destinationBarIcon: { fontSize: 16 },
   destinationBarText: { flex: 1, fontSize: 16, fontWeight: '600', color: COLORS.text },
   destinationBarClear: { fontSize: 14, color: COLORS.subtext },
+  searchPanel: {
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  fromRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    gap: 10,
+  },
+  fromDot: { fontSize: 10, color: COLORS.primary },
+  fromText: { flex: 1, fontSize: 16, color: COLORS.subtext },
+  fromClear: { fontSize: 13, color: COLORS.subtext },
+  fieldDivider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginLeft: 38,
+  },
+  originSearchPanel: { gap: 8 },
+  originBackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  originBackIcon: { fontSize: 18, color: COLORS.text },
+  originBackText: { fontSize: 15, fontWeight: '600', color: COLORS.text },
   reportPin: {
     backgroundColor: COLORS.white,
     borderRadius: 20,

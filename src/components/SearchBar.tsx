@@ -20,10 +20,12 @@ interface Props {
   userLocation: Coordinate | null;
   onSelectResult: (result: SearchResult) => void;
   onClear: () => void;
+  placeholder?: string;
+  autoFocus?: boolean;
 }
 
 const SearchBar = forwardRef<SearchBarHandle, Props>(
-  ({ userLocation, onSelectResult, onClear }, ref) => {
+  ({ userLocation, onSelectResult, onClear, placeholder = 'Where are you walking to?', autoFocus = false }, ref) => {
     const [value, setValue] = useState('');
     const [suggestions, setSuggestions] = useState<SearchResult[]>([]);
     const [loading, setLoading] = useState(false);
@@ -75,8 +77,9 @@ const SearchBar = forwardRef<SearchBarHandle, Props>(
           <TextInput
             ref={inputRef}
             style={styles.input}
-            placeholder="Where are you walking to?"
+            placeholder={placeholder}
             placeholderTextColor={COLORS.placeholder}
+            autoFocus={autoFocus}
             value={value}
             onChangeText={setValue}
             returnKeyType="search"
