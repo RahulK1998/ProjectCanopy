@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "10K",
-    "slug": "10k-walking",
+    "name": "Canopy",
+    "slug": "canopy",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "scheme": "tenkwalk",
+    "scheme": "canopy",
     "userInterfaceStyle": "light",
     "splash": {
       "resizeMode": "contain",
@@ -13,16 +13,16 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.tenkwalk.app",
+      "bundleIdentifier": "com.canopy.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "10K uses your location to show walks from where you are."
+        "NSLocationWhenInUseUsageDescription": "Canopy uses your location to show walks from where you are."
       }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#22C55E"
       },
-      "package": "com.tenkwalk.app",
+      "package": "com.canopy.app",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
@@ -33,7 +33,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "10K uses your location to find walks near you."
+          "locationWhenInUsePermission": "Canopy uses your location to find walks near you."
         }
       ],
       "expo-asset"

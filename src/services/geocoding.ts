@@ -21,7 +21,7 @@ async function fetchNominatim(query: string, near?: Coordinate, bounded = false)
     url += `&viewbox=${near.longitude - d},${near.latitude + d},${near.longitude + d},${near.latitude - d}`;
     if (bounded) url += '&bounded=1';
   }
-  const res = await fetch(url, { headers: { 'User-Agent': '10KWalkingApp/1.0' } });
+  const res = await fetch(url, { headers: { 'User-Agent': 'CanopyApp/1.0' } });
   if (!res.ok) return [];
   const data = await res.json();
   return data.map((item: any) => ({
